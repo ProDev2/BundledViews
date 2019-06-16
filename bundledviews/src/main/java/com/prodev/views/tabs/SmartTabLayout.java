@@ -205,7 +205,8 @@ public class SmartTabLayout extends HorizontalScrollView {
         super.onLayout(changed, l, t, r, b);
         // Ensure first scroll
         if (changed && viewPager != null) {
-            scrollToTab(viewPager.getCurrentItem(), 0);
+            int tabPos = viewPager.getCurrentItem();
+            scrollToTab(tabPos, 0);
         }
     }
 
@@ -329,10 +330,10 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         this.viewPager = viewPager;
         if (viewPager != null && viewPager.getAdapter() != null) {
-            //startScroll(viewPager.getCurrentItem(), 0, 0);
-
             viewPager.addOnPageChangeListener(new InternalViewPagerListener());
             populateTabStrip();
+
+            scrollToTab(viewPager.getCurrentItem(), 0);
         }
     }
 
@@ -420,6 +421,24 @@ public class SmartTabLayout extends HorizontalScrollView {
         }
     }
 
+    public void scrollToTab(int tabIndex) {
+        scrollToTab(tabIndex, 0f);
+    }
+
+    public void scrollToTab(int tabIndex, float positionOffset) {
+        //Abort viewpager scroll
+        try {
+            if (viewPager != null)
+                viewPager.setCurrentItem(viewPager.getCurrentItem(), false);
+        } catch (Exception e) {
+        }
+
+        //Scroll
+        startScroll(tabIndex, positionOffset);
+        scroll(tabIndex, positionOffset);
+        stopScroll();
+    }
+
     public void startScroll(int tabIndex, float positionOffset) {
         startScroll(tabIndex, positionOffset, -1);
     }
@@ -444,7 +463,7 @@ public class SmartTabLayout extends HorizontalScrollView {
         this.scrollPos = -1;
     }
 
-    public void scrollToTab(int tabIndex, float positionOffset) {
+    public void scroll(int tabIndex, float positionOffset) {
         if (tabIndex < 0) return;
         if (positionOffset < 0) {
             int changeBy = (int) Math.floor(positionOffset);
@@ -462,7 +481,6 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         final float tabPos = (float) tabIndex + positionOffset;
         final float tabMovement = tabPos - currentTabPos;
-        if (tabMovement == 0) return;
 
         final int nextTabIndex = (int) (tabMovement >= 0 ? Math.ceil(tabPos) : Math.floor(tabPos));
         final int targetTabIndex = markedTabIndex >= 0 ? markedTabIndex : nextTabIndex;
@@ -778,7 +796,7 @@ public class SmartTabLayout extends HorizontalScrollView {
 
             tabStrip.onViewPagerPageChanged(position, positionOffset);
 
-            scrollToTab(position, positionOffset);
+            scroll(position, positionOffset);
 
             if (viewPagerPageChangeListener != null) {
                 viewPagerPageChangeListener.onPageScrolled(position, positionOffset, positionOffsetPixels);
@@ -805,7 +823,10 @@ public class SmartTabLayout extends HorizontalScrollView {
 
             if (scrollState == ViewPager.SCROLL_STATE_IDLE) {
                 tabStrip.onViewPagerPageChanged(position, 0f);
-                scrollToTab(position, 0);
+
+                startScroll(position, 0);
+                scroll(position, 0);
+                stopScroll();
             }
 
             for (int i = 0, size = tabStrip.getChildCount(); i < size; i++) {
