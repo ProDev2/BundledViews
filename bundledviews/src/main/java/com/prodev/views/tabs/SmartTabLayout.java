@@ -213,10 +213,8 @@ public class SmartTabLayout extends HorizontalScrollView {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         // Ensure first scroll
-        if (changed && viewPager != null) {
-            int tabPos = viewPager.getCurrentItem();
-            scrollToTab(tabPos, 0);
-        }
+        if (changed && viewPager != null)
+            scrollToCurrentTab();
     }
 
     /**
@@ -384,11 +382,8 @@ public class SmartTabLayout extends HorizontalScrollView {
             }
         }
 
-        if (this.viewPager != null && this.viewPager.getAdapter() != null) {
-            updateTabStrip();
-
-            scrollToTab(viewPager.getCurrentItem(), 0);
-        }
+        if (this.viewPager != null && this.viewPager.getAdapter() != null)
+            update();
     }
 
     /**
@@ -406,6 +401,11 @@ public class SmartTabLayout extends HorizontalScrollView {
      * Create a default view to be used for tabs. This is called if a custom tab view is not set via
      * {@link #setCustomTabView(int, int)}.
      */
+
+    public synchronized void update() {
+        updateTabStrip();
+        scrollToCurrentTab();
+    }
 
     public synchronized void updateTabStrip() {
         final PagerAdapter adapter = viewPager != null ? viewPager.getAdapter() : null;
@@ -460,6 +460,13 @@ public class SmartTabLayout extends HorizontalScrollView {
         }
 
         tabProvider.setData(this, true);
+    }
+
+    public void scrollToCurrentTab() {
+        if (viewPager != null) {
+            int currentTabIndex = viewPager.getCurrentItem();
+            scrollToTab(currentTabIndex, 0);
+        }
     }
 
     public void scrollToTab(int tabIndex, float positionOffset) {
