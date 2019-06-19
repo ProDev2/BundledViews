@@ -383,8 +383,10 @@ public class SmartTabLayout extends HorizontalScrollView {
             }
         }
 
-        if (this.viewPager != null && this.viewPager.getAdapter() != null)
-            update();
+        if (this.viewPager != null && this.viewPager.getAdapter() != null) {
+            updateTabStrip();
+            scrollToCurrentTab();
+        }
     }
 
     /**
@@ -405,11 +407,6 @@ public class SmartTabLayout extends HorizontalScrollView {
         int viewCount = tabStrip.getChildCount();
 
         return tabCount != viewCount;
-    }
-
-    public synchronized void update() {
-        updateTabStrip();
-        scrollToCurrentTab();
     }
 
     public synchronized void updateTabStrip() {
