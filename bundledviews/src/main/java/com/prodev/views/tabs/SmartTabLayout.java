@@ -481,15 +481,8 @@ public class SmartTabLayout extends HorizontalScrollView {
     }
 
     public void scrollToTab(float tabPos) {
-        //Abort viewpager scroll
-        try {
-            if (viewPager != null)
-                viewPager.setCurrentItem(viewPager.getCurrentItem(), false);
-        } catch (Exception e) {
-        }
-
         //Scroll
-        startScroll(tabPos, tabPos);
+        startScroll(tabPos, -1);
         scroll(tabPos);
         stopScroll();
     }
