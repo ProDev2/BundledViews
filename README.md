@@ -17,5 +17,5 @@ allprojects {
 
 Add the dependency:
 ```
-implementation 'com.github.ProDev2:BundledViews:1.0'
+implementation 'com.github.ProDev2:BundledViews:1.1'
 ```
