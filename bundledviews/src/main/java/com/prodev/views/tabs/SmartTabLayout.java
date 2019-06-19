@@ -16,11 +16,15 @@
  */
 package com.prodev.views.tabs;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.support.annotation.IdRes;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPager;
@@ -28,7 +32,6 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
@@ -36,6 +39,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.prodev.views.R;
+import com.prodev.views.tabs.provider.SimpleTabProvider;
+import com.prodev.views.tools.holder.ViewsHolder;
+
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * To be used with ViewPager to provide a tab indicator component which give constant feedback as
@@ -61,10 +69,7 @@ import com.prodev.views.R;
  * <a href="https://developer.android.com/samples/SlidingTabsBasic/src/com.example.android.common/view/SlidingTabLayout.html">SlidingTabLayout</a>
  */
 public class SmartTabLayout extends HorizontalScrollView {
-
     private static final boolean DEFAULT_DISTRIBUTE_EVENLY = false;
-    private static final int TITLE_OFFSET_DIPS = 24;
-    private static final int TITLE_OFFSET_AUTO_CENTER = -1;
     private static final int TAB_VIEW_PADDING_DIPS = 16;
     private static final boolean TAB_VIEW_TEXT_ALL_CAPS = true;
     private static final int TAB_VIEW_TEXT_SIZE_SP = 12;
@@ -73,7 +78,6 @@ public class SmartTabLayout extends HorizontalScrollView {
     private static final boolean TAB_CLICKABLE = true;
 
     protected final SmartTabStrip tabStrip;
-    private int titleOffset;
     private int tabViewBackgroundResId;
     private boolean tabViewTextAllCaps;
     private ColorStateList tabViewTextColors;
@@ -88,8 +92,12 @@ public class SmartTabLayout extends HorizontalScrollView {
     private OnTabClickListener onTabClickListener;
     private boolean distributeEvenly;
 
+    private ViewPager.OnPageChangeListener onPageChangeListener;
+    private ViewPager.OnAdapterChangeListener onAdapterChangeListener;
+
     private float currentTabPos = -1;
     private int markedTabIndex = -1;
+    private int targetTabIndex = -1;
     private int scrollPos = -1;
 
     public SmartTabLayout(Context context) {
@@ -120,7 +128,6 @@ public class SmartTabLayout extends HorizontalScrollView {
         int customTabLayoutId = NO_ID;
         int customTabTextViewId = NO_ID;
         boolean clickable = TAB_CLICKABLE;
-        int titleOffset = (int) (TITLE_OFFSET_DIPS * density);
 
         TypedArray a = context.obtainStyledAttributes(
                 attrs, R.styleable.stl_SmartTabLayout, defStyle, 0);
@@ -144,11 +151,8 @@ public class SmartTabLayout extends HorizontalScrollView {
                 R.styleable.stl_SmartTabLayout_stl_distributeEvenly, distributeEvenly);
         clickable = a.getBoolean(
                 R.styleable.stl_SmartTabLayout_stl_clickable, clickable);
-        titleOffset = a.getLayoutDimension(
-                R.styleable.stl_SmartTabLayout_stl_titleOffset, titleOffset);
         a.recycle();
 
-        this.titleOffset = titleOffset;
         this.tabViewBackgroundResId = tabBackgroundResId;
         this.tabViewTextAllCaps = textAllCaps;
         this.tabViewTextColors = (textColors != null)
@@ -176,6 +180,8 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         addView(tabStrip, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
 
+        //Set default tab provider
+        setToDefaultTabView();
     }
 
     @Override
@@ -308,8 +314,18 @@ public class SmartTabLayout extends HorizontalScrollView {
      * @param layoutResId Layout id to be inflated
      * @param textViewId  id of the {@link android.widget.TextView} in the inflated view
      */
-    public void setCustomTabView(int layoutResId, int textViewId) {
-        tabProvider = new SimpleTabProvider(getContext(), layoutResId, textViewId);
+    public void setCustomTabView(@IdRes int layoutResId, @IdRes int textViewId) {
+        setCustomTabView(new SimpleTabProvider(getContext(), layoutResId, textViewId));
+    }
+
+    /**
+     * Sets the tab layout back to default
+     */
+    public void setToDefaultTabView() {
+        if (tabStrip != null)
+            setCustomTabView(new DefaultTabProvider(tabStrip));
+        else
+            setCustomTabView(new DefaultTabProvider(getContext()));
     }
 
     /**
@@ -317,21 +333,58 @@ public class SmartTabLayout extends HorizontalScrollView {
      *
      * @param provider {@link TabProvider}
      */
-    public void setCustomTabView(TabProvider provider) {
+    public synchronized void setCustomTabView(TabProvider provider) {
+        setCustomTabView(provider, true);
+    }
+
+    public synchronized void setCustomTabView(TabProvider provider, boolean update) {
         tabProvider = provider;
+
+        if (update) {
+            if (tabProvider != null) {
+                updateTabStrip();
+            } else {
+                try {
+                    if (tabStrip != null)
+                        tabStrip.removeAllViews();
+                } catch (Exception e) {
+                }
+            }
+        }
     }
 
     /**
      * Sets the associated view pager. Note that the assumption here is that the pager content
      * (number of tabs and tab titles) does not change after this call has been made.
      */
-    public void setViewPager(ViewPager viewPager) {
-        tabStrip.removeAllViews();
+    public synchronized void setViewPager(ViewPager viewPager) {
+        if (this.viewPager != viewPager) {
+            try {
+                if (tabStrip != null)
+                    tabStrip.removeAllViews();
+            } catch (Exception e) {
+            }
 
-        this.viewPager = viewPager;
-        if (viewPager != null && viewPager.getAdapter() != null) {
-            viewPager.addOnPageChangeListener(new InternalViewPagerListener());
-            populateTabStrip();
+            if (onPageChangeListener == null)
+                onPageChangeListener = new InternalPageChangeListener();
+            if (onAdapterChangeListener == null)
+                onAdapterChangeListener = new InternalAdapterChangeListener();
+
+            if (this.viewPager != null) {
+                this.viewPager.removeOnPageChangeListener(onPageChangeListener);
+                this.viewPager.removeOnAdapterChangeListener(onAdapterChangeListener);
+            }
+
+            this.viewPager = viewPager;
+
+            if (this.viewPager != null) {
+                this.viewPager.addOnPageChangeListener(onPageChangeListener);
+                this.viewPager.addOnAdapterChangeListener(onAdapterChangeListener);
+            }
+        }
+
+        if (this.viewPager != null && this.viewPager.getAdapter() != null) {
+            updateTabStrip();
 
             scrollToTab(viewPager.getCurrentItem(), 0);
         }
@@ -344,7 +397,7 @@ public class SmartTabLayout extends HorizontalScrollView {
      * @return the view at the specified position or null if the position does not exist within the
      * tabs
      */
-    public View getTabAt(int position) {
+    public synchronized View getTabAt(int position) {
         return tabStrip.getChildAt(position);
     }
 
@@ -352,73 +405,60 @@ public class SmartTabLayout extends HorizontalScrollView {
      * Create a default view to be used for tabs. This is called if a custom tab view is not set via
      * {@link #setCustomTabView(int, int)}.
      */
-    protected TextView createDefaultTabView(CharSequence title) {
-        TextView textView = new TextView(getContext());
-        textView.setGravity(Gravity.CENTER);
-        textView.setText(title);
-        textView.setTextColor(tabViewTextColors);
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, tabViewTextSize);
-        textView.setTypeface(Typeface.DEFAULT_BOLD);
-        textView.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
 
-        if (tabViewBackgroundResId != NO_ID) {
-            textView.setBackgroundResource(tabViewBackgroundResId);
-        } else {
-            // If we're running on Honeycomb or newer, then we can use the Theme's
-            // selectableItemBackground to ensure that the View has a pressed state
-            TypedValue outValue = new TypedValue();
-            getContext().getTheme().resolveAttribute(android.R.attr.selectableItemBackground,
-                    outValue, true);
-            textView.setBackgroundResource(outValue.resourceId);
+    public synchronized void updateTabStrip() {
+        final PagerAdapter adapter = viewPager != null ? viewPager.getAdapter() : null;
+
+        if (tabStrip == null) {
+            return;
+        }
+        if (tabProvider == null) {
+            try {
+                tabStrip.removeAllViews();
+            } catch (Exception e) {
+            }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            // If we're running on ICS or newer, enable all-caps to match the Action Bar tab style
-            textView.setAllCaps(tabViewTextAllCaps);
+        tabProvider.setParentView(tabStrip);
+        tabProvider.setData(this, false);
+
+        int tabCount = adapter != null ? adapter.getCount() : 0;
+        int viewCount = tabStrip.getChildCount();
+
+        if (tabCount != viewCount) {
+            ArrayList<Integer> tabPositionList = new ArrayList<>();
+            for (int pos = 0; pos < tabCount; pos++) tabPositionList.add(pos);
+
+            tabProvider.setKeys(tabPositionList, true, false);
+
+            try {
+                tabStrip.removeAllViews();
+                for (int pos = 0; pos < tabCount; pos++) {
+                    final View tabView = tabProvider.getContentView(pos);
+                    if (tabView == null) continue;
+
+                    if (distributeEvenly) {
+                        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tabView.getLayoutParams();
+                        lp.width = 0;
+                        lp.weight = 1;
+                    }
+
+                    if (internalTabClickListener != null) {
+                        tabView.setOnClickListener(internalTabClickListener);
+                    }
+
+                    tabStrip.addView(tabView);
+
+                    try {
+                        tabView.setSelected(pos == viewPager.getCurrentItem());
+                    } catch (Exception e) {
+                    }
+                }
+            } catch (Exception e) {
+            }
         }
 
-        textView.setPadding(
-                tabViewTextHorizontalPadding, 0,
-                tabViewTextHorizontalPadding, 0);
-
-        if (tabViewTextMinWidth > 0) {
-            textView.setMinWidth(tabViewTextMinWidth);
-        }
-
-        return textView;
-    }
-
-    private void populateTabStrip() {
-        final PagerAdapter adapter = viewPager.getAdapter();
-
-        for (int i = 0; i < adapter.getCount(); i++) {
-
-            final View tabView = (tabProvider == null)
-                    ? createDefaultTabView(adapter.getPageTitle(i))
-                    : tabProvider.createTabView(tabStrip, i, adapter);
-
-            if (tabView == null) {
-                throw new IllegalStateException("tabView is null.");
-            }
-
-            if (distributeEvenly) {
-                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) tabView.getLayoutParams();
-                lp.width = 0;
-                lp.weight = 1;
-            }
-
-            if (internalTabClickListener != null) {
-                tabView.setOnClickListener(internalTabClickListener);
-            }
-
-            tabStrip.addView(tabView);
-
-            if (i == viewPager.getCurrentItem()) {
-                tabView.setSelected(true);
-            }
-
-        }
+        tabProvider.setData(this, true);
     }
 
     public void scrollToTab(int tabIndex) {
@@ -439,6 +479,22 @@ public class SmartTabLayout extends HorizontalScrollView {
         stopScroll();
     }
 
+    public int getMarkedTabIndex() {
+        return markedTabIndex;
+    }
+
+    public void setMarkedTabIndex(int markedTabIndex) {
+        this.markedTabIndex = markedTabIndex;
+    }
+
+    public int getTargetTabIndex() {
+        return targetTabIndex;
+    }
+
+    public void markTargetTabIndex() {
+        markedTabIndex = targetTabIndex;
+    }
+
     public void startScroll(int tabIndex, float positionOffset) {
         startScroll(tabIndex, positionOffset, -1);
     }
@@ -454,12 +510,14 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         this.currentTabPos = (float) tabIndex + positionOffset;
         this.markedTabIndex = markedTabIndex;
+        this.targetTabIndex = markedTabIndex;
         this.scrollPos = getScrollX();
     }
 
     public void stopScroll() {
         this.currentTabPos = -1;
         this.markedTabIndex = -1;
+        this.targetTabIndex = -1;
         this.scrollPos = -1;
     }
 
@@ -477,22 +535,24 @@ public class SmartTabLayout extends HorizontalScrollView {
         final int tabStripChildCount = tabStrip.getChildCount();
         if (tabStripChildCount == 0 || tabIndex < 0 || tabIndex >= tabStripChildCount) return;
 
-        if (currentTabPos < 0 || scrollPos < 0) return;
+        if (this.currentTabPos < 0 || this.scrollPos < 0) return;
 
         final float tabPos = (float) tabIndex + positionOffset;
-        final float tabMovement = tabPos - currentTabPos;
+        final float tabMovement = tabPos - this.currentTabPos;
 
-        final int nextTabIndex = (int) (tabMovement >= 0 ? Math.ceil(tabPos) : Math.floor(tabPos));
-        final int targetTabIndex = markedTabIndex >= 0 ? markedTabIndex : nextTabIndex;
-        final float tabAmountScroll = (float) targetTabIndex - currentTabPos;
+        final int nextTabIndex = (int) (tabMovement > 0 ? Math.floor(tabPos) + 1d : Math.floor(tabPos));
+        final int targetTabIndex = this.markedTabIndex >= 0 ? this.markedTabIndex : nextTabIndex;
+        final float tabAmountScroll = (float) targetTabIndex - this.currentTabPos;
         final float tabAmountDist = (float) targetTabIndex - tabPos;
 
-        if (markedTabIndex >= 0 && tabIndex == markedTabIndex)
-            markedTabIndex = -1;
+        if (positionOffset <= 0 && this.markedTabIndex >= 0 && tabIndex == this.markedTabIndex)
+            this.markedTabIndex = -1;
+
+        this.targetTabIndex = targetTabIndex;
 
         if (positionOffset <= 0) {
-            currentTabPos = tabPos;
-            scrollPos = getScrollX();
+            this.currentTabPos = tabPos;
+            this.scrollPos = getScrollX();
         }
 
         final float movement = 1f - (tabAmountScroll != 0f ? tabAmountDist / tabAmountScroll : 0f);
@@ -733,55 +793,78 @@ public class SmartTabLayout extends HorizontalScrollView {
      * Create the custom tabs in the tab layout. Set with
      * {@link #setCustomTabView(com.prodev.views.tabs.SmartTabLayout.TabProvider)}
      */
-    public interface TabProvider {
+    public static abstract class TabProvider extends ViewsHolder<Integer> {
+        protected boolean rebindOnUpdate;
 
-        /**
-         * @return Return the View of {@code position} for the Tabs
-         */
-        View createTabView(ViewGroup container, int position, PagerAdapter adapter);
+        private SmartTabLayout tabLayout;
 
-    }
+        private ViewPager pager;
+        private PagerAdapter adapter;
 
-    private static class SimpleTabProvider implements TabProvider {
+        public TabProvider(Context context) {
+            super(context);
 
-        private final LayoutInflater inflater;
-        private final int tabViewLayoutId;
-        private final int tabViewTextViewId;
-
-        private SimpleTabProvider(Context context, int layoutResId, int textViewId) {
-            inflater = LayoutInflater.from(context);
-            tabViewLayoutId = layoutResId;
-            tabViewTextViewId = textViewId;
+            rebindOnUpdate = true;
         }
 
-        @Override
-        public View createTabView(ViewGroup container, int position, PagerAdapter adapter) {
-            View tabView = null;
-            TextView tabTitleView = null;
+        public TabProvider(ViewGroup parentView) {
+            super(parentView);
 
-            if (tabViewLayoutId != NO_ID) {
-                tabView = inflater.inflate(tabViewLayoutId, container, false);
-            }
-
-            if (tabViewTextViewId != NO_ID && tabView != null) {
-                tabTitleView = (TextView) tabView.findViewById(tabViewTextViewId);
-            }
-
-            if (tabTitleView == null && TextView.class.isInstance(tabView)) {
-                tabTitleView = (TextView) tabView;
-            }
-
-            if (tabTitleView != null) {
-                tabTitleView.setText(adapter.getPageTitle(position));
-            }
-
-            return tabView;
+            rebindOnUpdate = true;
         }
 
+        private synchronized final void setData(SmartTabLayout tabLayout, boolean update) {
+            this.tabLayout = tabLayout;
+
+            this.pager = null;
+            this.adapter = null;
+
+            if (this.tabLayout != null) {
+                this.pager = this.tabLayout.viewPager;
+
+                if (this.pager != null)
+                    this.adapter = this.pager.getAdapter();
+            }
+
+            if (update) {
+                Iterator<Integer> keyIterator = keyIterator();
+                if (keyIterator != null) {
+                    while (keyIterator.hasNext()) {
+                        Integer key = keyIterator.next();
+
+                        try {
+                            update(key);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                createAll(rebindOnUpdate);
+            }
+        }
+
+        public final boolean rebindOnUpdate() {
+            return rebindOnUpdate;
+        }
+
+        public final SmartTabLayout getTabLayout() {
+            return tabLayout;
+        }
+
+        public final ViewPager getPager() {
+            return pager;
+        }
+
+        public final PagerAdapter getAdapter() {
+            return adapter;
+        }
+
+        public void update(int position) {
+        }
     }
 
-    private class InternalViewPagerListener implements ViewPager.OnPageChangeListener {
-
+    private class InternalPageChangeListener implements ViewPager.OnPageChangeListener {
         private int lastTabIndex = -1;
         private int scrollState;
 
@@ -790,9 +873,8 @@ public class SmartTabLayout extends HorizontalScrollView {
             lastTabIndex = position;
 
             int tabStripChildCount = tabStrip.getChildCount();
-            if ((tabStripChildCount == 0) || (position < 0) || (position >= tabStripChildCount)) {
+            if ((tabStripChildCount == 0) || (position < 0) || (position >= tabStripChildCount))
                 return;
-            }
 
             tabStrip.onViewPagerPageChanged(position, positionOffset);
 
@@ -807,8 +889,10 @@ public class SmartTabLayout extends HorizontalScrollView {
         public void onPageScrollStateChanged(int state) {
             if (state == ViewPager.SCROLL_STATE_IDLE)
                 stopScroll();
-            else if (scrollState == ViewPager.SCROLL_STATE_IDLE && state != ViewPager.SCROLL_STATE_IDLE)
+            if (scrollState == ViewPager.SCROLL_STATE_IDLE && state != ViewPager.SCROLL_STATE_IDLE)
                 startScroll(lastTabIndex >= 0 ? lastTabIndex : (viewPager != null ? viewPager.getCurrentItem() : 0), 0, markedTabIndex);
+            if (scrollState != ViewPager.SCROLL_STATE_SETTLING && state == ViewPager.SCROLL_STATE_SETTLING)
+                markTargetTabIndex();
 
             scrollState = state;
 
@@ -823,10 +907,6 @@ public class SmartTabLayout extends HorizontalScrollView {
 
             if (scrollState == ViewPager.SCROLL_STATE_IDLE) {
                 tabStrip.onViewPagerPageChanged(position, 0f);
-
-                startScroll(position, 0);
-                scroll(position, 0);
-                stopScroll();
             }
 
             for (int i = 0, size = tabStrip.getChildCount(); i < size; i++) {
@@ -837,7 +917,21 @@ public class SmartTabLayout extends HorizontalScrollView {
                 viewPagerPageChangeListener.onPageSelected(position);
             }
         }
+    }
 
+    private class InternalAdapterChangeListener implements ViewPager.OnAdapterChangeListener {
+        @Override
+        public void onAdapterChanged(@NonNull ViewPager viewPager, @Nullable PagerAdapter oldAdapter, @Nullable PagerAdapter newAdapter) {
+            if (oldAdapter != newAdapter) {
+                try {
+                    if (tabStrip != null)
+                        tabStrip.removeAllViews();
+                } catch (Exception e) {
+                }
+            }
+
+            setViewPager(viewPager);
+        }
     }
 
     private class InternalTabClickListener implements OnClickListener {
@@ -856,4 +950,80 @@ public class SmartTabLayout extends HorizontalScrollView {
         }
     }
 
+    /**
+     * Default tab layout provider
+     */
+    public class DefaultTabProvider extends TabProvider {
+        public DefaultTabProvider(Context context) {
+            super(context);
+
+            rebindOnUpdate = true;
+        }
+
+        public DefaultTabProvider(ViewGroup parentView) {
+            super(parentView);
+
+            rebindOnUpdate = true;
+        }
+
+        @Override
+        protected View createHolder(Integer position, ViewGroup parentView) {
+            return createTabView();
+        }
+
+        @SuppressLint("ResourceType")
+        private TextView createTabView() {
+            TextView textView = new TextView(getContext());
+            textView.setId(1);
+            textView.setGravity(Gravity.CENTER);
+
+            textView.setTextColor(tabViewTextColors);
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, tabViewTextSize);
+            textView.setTypeface(Typeface.DEFAULT_BOLD);
+
+            textView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+            ));
+
+            if (tabViewBackgroundResId != NO_ID) {
+                textView.setBackgroundResource(tabViewBackgroundResId);
+            } else {
+                // If we're running on Honeycomb or newer, then we can use the Theme's
+                // selectableItemBackground to ensure that the View has a pressed state
+                TypedValue outValue = new TypedValue();
+                getContext().getTheme().resolveAttribute(android.R.attr.selectableItemBackground,
+                        outValue, true);
+                textView.setBackgroundResource(outValue.resourceId);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                // If we're running on ICS or newer, enable all-caps to match the Action Bar tab style
+                textView.setAllCaps(tabViewTextAllCaps);
+            }
+
+            textView.setPadding(
+                    tabViewTextHorizontalPadding, 0,
+                    tabViewTextHorizontalPadding, 0);
+
+            if (tabViewTextMinWidth > 0) {
+                textView.setMinWidth(tabViewTextMinWidth);
+            }
+
+            return textView;
+        }
+
+        @Override
+        protected void bindHolder(Integer position, View contentView) {
+            CharSequence title = null;
+            try {
+                title = getAdapter().getPageTitle(position);
+            } catch (Exception e) {
+            }
+
+            @SuppressLint("ResourceType")
+            TextView textView = (TextView) contentView.findViewById(1);
+            if (textView != null) textView.setText(title);
+        }
+    }
 }
