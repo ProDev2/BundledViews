@@ -40,6 +40,7 @@ import android.widget.TextView;
 
 import com.prodev.views.R;
 import com.prodev.views.tabs.provider.SimpleTabProvider;
+import com.prodev.views.tools.holder.ViewHolder;
 import com.prodev.views.tools.holder.ViewsHolder;
 
 import java.util.ArrayList;
@@ -397,10 +398,14 @@ public class SmartTabLayout extends HorizontalScrollView {
         return tabStrip.getChildAt(position);
     }
 
-    /**
-     * Create a default view to be used for tabs. This is called if a custom tab view is not set via
-     * {@link #setCustomTabView(int, int)}.
-     */
+    public synchronized boolean isUpdateRequired() {
+        final PagerAdapter adapter = viewPager != null ? viewPager.getAdapter() : null;
+
+        int tabCount = adapter != null ? adapter.getCount() : 0;
+        int viewCount = tabStrip.getChildCount();
+
+        return tabCount != viewCount;
+    }
 
     public synchronized void update() {
         updateTabStrip();
@@ -449,17 +454,32 @@ public class SmartTabLayout extends HorizontalScrollView {
                     }
 
                     tabStrip.addView(tabView);
-
-                    try {
-                        tabView.setSelected(pos == viewPager.getCurrentItem());
-                    } catch (Exception e) {
-                    }
                 }
             } catch (Exception e) {
             }
         }
 
+        try {
+            if (viewPager != null) {
+                int selectedTabIndex = viewPager.getCurrentItem();
+
+                if (selectedTabIndex >= 0) {
+                    for (int pos = 0; pos < tabCount; pos++) {
+                        final View tabView = tabProvider.getContentView(pos);
+                        if (tabView == null) continue;
+
+                        tabView.setSelected(pos == selectedTabIndex);
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+
         tabProvider.setData(this, true);
+    }
+
+    public boolean isScrolling() {
+        return this.startTabPos >= 0;
     }
 
     public void scrollToCurrentTab() {
@@ -549,6 +569,8 @@ public class SmartTabLayout extends HorizontalScrollView {
     }
 
     public void scroll(final float tabPos) {
+        if (this.startTabPos < 0) return;
+
         // Calculate movement
         final float tabMovement = tabPos - this.startTabPos;
 
@@ -731,6 +753,7 @@ public class SmartTabLayout extends HorizontalScrollView {
 
             tabStrip.onViewPagerPageChanged(position, positionOffset);
 
+            if (!isScrolling()) startScroll(position, positionOffset, markedTabPos);
             scroll(position, positionOffset);
 
             if (viewPagerPageChangeListener != null) {
@@ -756,6 +779,9 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         @Override
         public void onPageSelected(int position) {
+            if (isUpdateRequired())
+                updateTabStrip();
+
             if (scrollState == ViewPager.SCROLL_STATE_IDLE) {
                 scrollToTab(position);
 
