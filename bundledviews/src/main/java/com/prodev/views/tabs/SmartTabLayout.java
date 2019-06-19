@@ -764,6 +764,8 @@ public class SmartTabLayout extends HorizontalScrollView {
         @Override
         public void onPageSelected(int position) {
             if (scrollState == ViewPager.SCROLL_STATE_IDLE) {
+                scrollToTab(position);
+
                 tabStrip.onViewPagerPageChanged(position, 0f);
             }
 
