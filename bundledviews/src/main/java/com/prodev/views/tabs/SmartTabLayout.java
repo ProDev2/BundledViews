@@ -40,7 +40,6 @@ import android.widget.TextView;
 
 import com.prodev.views.R;
 import com.prodev.views.tabs.provider.SimpleTabProvider;
-import com.prodev.views.tools.holder.ViewHolder;
 import com.prodev.views.tools.holder.ViewsHolder;
 
 import java.util.ArrayList;
@@ -77,6 +76,9 @@ public class SmartTabLayout extends HorizontalScrollView {
     private static final int TAB_VIEW_TEXT_COLOR = 0xFC000000;
     private static final int TAB_VIEW_TEXT_MIN_WIDTH = 0;
     private static final boolean TAB_CLICKABLE = true;
+
+    private int lastTabAmount;
+    private int lastWidth, lastHeight;
 
     protected final SmartTabStrip tabStrip;
     private int tabViewBackgroundResId;
@@ -197,25 +199,56 @@ public class SmartTabLayout extends HorizontalScrollView {
     protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
 
-        if (tabStrip.isIndicatorAlwaysInCenter() && tabStrip.getChildCount() > 0) {
-            View firstTab = tabStrip.getChildAt(0);
-            View lastTab = tabStrip.getChildAt(tabStrip.getChildCount() - 1);
+        //Update layout
+        updateScrollLayout(width);
+    }
 
-            int start = (width - Utils.getMeasuredWidth(firstTab)) / 2 - Utils.getMarginStart(firstTab);
-            int end = (width - Utils.getMeasuredWidth(lastTab)) / 2 - Utils.getMarginEnd(lastTab);
-            tabStrip.setMinimumWidth(tabStrip.getMeasuredWidth());
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-            ViewCompat.setPaddingRelative(this, start, getPaddingTop(), end, getPaddingBottom());
-            setClipToPadding(false);
+        int tabAmount = tabStrip != null ? tabStrip.getChildCount() : 0;
+
+        int width = getWidth();
+        int height = getHeight();
+
+        if (width <= 0) width = getMeasuredWidth();
+        if (height <= 0) height = getMeasuredHeight();
+
+        if (tabAmount != lastTabAmount || width != lastWidth || height != lastHeight) {
+            lastTabAmount = tabAmount;
+
+            lastWidth = width;
+            lastHeight = height;
+
+            updateScrollLayout(width);
         }
     }
 
     @Override
-    protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        super.onLayout(changed, l, t, r, b);
-        // Ensure first scroll
-        if (changed && viewPager != null)
-            scrollToCurrentTab();
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+    }
+
+    private void updateScrollLayout(int width) {
+        if (tabStrip == null || tabStrip.getChildCount() <= 0) return;
+
+        try {
+            if (tabStrip.isIndicatorAlwaysInCenter()) {
+                View firstTab = tabStrip.getChildAt(0);
+                View lastTab = tabStrip.getChildAt(tabStrip.getChildCount() - 1);
+
+                int start = (width - Utils.getMeasuredWidth(firstTab)) / 2 - Utils.getMarginStart(firstTab);
+                int end = (width - Utils.getMeasuredWidth(lastTab)) / 2 - Utils.getMarginEnd(lastTab);
+
+                ViewCompat.setPaddingRelative(this, start, getPaddingTop(), end, getPaddingBottom());
+                setClipToPadding(false);
+            } else {
+                ViewCompat.setPaddingRelative(this, 0, getPaddingTop(), 0, getPaddingBottom());
+                setClipToPadding(false);
+            }
+        } catch (Exception e) {
+        }
     }
 
     /**
@@ -448,6 +481,7 @@ public class SmartTabLayout extends HorizontalScrollView {
 
                     if (internalTabClickListener != null) {
                         tabView.setOnClickListener(internalTabClickListener);
+                        tabView.setOnLongClickListener(internalTabClickListener);
                     }
 
                     tabStrip.addView(tabView);
@@ -565,18 +599,24 @@ public class SmartTabLayout extends HorizontalScrollView {
         scroll(tabPos);
     }
 
+    public float calculateTargetTabPos(final float tabPos) {
+        final float tabMovement = tabPos - this.startTabPos;
+
+        final int nextTabIndex = (int) (tabMovement > 0 ? Math.ceil(tabPos) : Math.ceil(tabPos) - 1d);
+        final float targetTabPos = this.markedTabPos >= 0 ? this.markedTabPos : nextTabIndex;
+
+        return targetTabPos;
+    }
+
     public void scroll(final float tabPos) {
         if (this.startTabPos < 0) return;
 
         // Calculate movement
-        final float tabMovement = tabPos - this.startTabPos;
+        final float targetTabPos = calculateTargetTabPos(tabPos);
+        this.targetTabPos = targetTabPos;
 
-        final int nextTabIndex = (int) (tabMovement > 0 ? Math.floor(tabPos) + 1d : Math.floor(tabPos));
-        final float targetTabPos = this.markedTabPos >= 0 ? this.markedTabPos : nextTabIndex;
         final float tabAmountScroll = targetTabPos - this.startTabPos;
         final float tabAmountDist = targetTabPos - tabPos;
-
-        this.targetTabPos = targetTabPos;
 
         final float movement = 1f - (tabAmountScroll != 0f ? tabAmountDist / tabAmountScroll : 0f);
 
@@ -588,7 +628,16 @@ public class SmartTabLayout extends HorizontalScrollView {
 
         final boolean isLayoutRtl = Utils.isLayoutRtl(this);
 
-        View targetTab = tabStrip.getChildAt((int) Math.floor(targetTabPos));
+        // Find target tab
+        int tabCount = tabStrip.getChildCount();
+        if (tabCount <= 0) return;
+
+        int targetTabIndex = (int) Math.floor(targetTabPos);
+        if (targetTabIndex >= tabCount) targetTabIndex = tabCount - 1;
+        if (targetTabIndex < 0) targetTabIndex = 0;
+
+        View targetTab = tabStrip.getChildAt(targetTabIndex);
+        if (targetTab == null) return;
 
         int targetScrollPos = 0;
         if (tabStrip.isIndicatorAlwaysInCenter()) {
@@ -658,7 +707,14 @@ public class SmartTabLayout extends HorizontalScrollView {
          *
          * @param position tab's position
          */
-        void onTabClicked(int position);
+        boolean onTabClicked(int position);
+
+        /**
+         * Called when a tab is long clicked.
+         *
+         * @param position tab's position
+         */
+        boolean onTabLongClicked(int position);
     }
 
     /**
@@ -813,19 +869,36 @@ public class SmartTabLayout extends HorizontalScrollView {
         }
     }
 
-    private class InternalTabClickListener implements OnClickListener {
+    private class InternalTabClickListener implements OnClickListener, OnLongClickListener {
         @Override
         public void onClick(View v) {
             for (int i = 0; i < tabStrip.getChildCount(); i++) {
                 if (v == tabStrip.getChildAt(i)) {
+                    boolean scrollToTab = true;
                     if (onTabClickListener != null) {
-                        onTabClickListener.onTabClicked(i);
+                        scrollToTab &= onTabClickListener.onTabClicked(i);
                     }
-                    startScroll(viewPager.getCurrentItem(), 0, i);
-                    viewPager.setCurrentItem(i);
-                    return;
+                    if (scrollToTab) {
+                        startScroll(viewPager.getCurrentItem(), 0, i);
+                        viewPager.setCurrentItem(i);
+                    }
+                    break;
                 }
             }
+        }
+
+        @Override
+        public boolean onLongClick(View v) {
+            boolean handled = false;
+            for (int i = 0; i < tabStrip.getChildCount(); i++) {
+                if (v == tabStrip.getChildAt(i)) {
+                    if (onTabClickListener != null) {
+                        handled |= onTabClickListener.onTabLongClicked(i);
+                    }
+                    break;
+                }
+            }
+            return handled;
         }
     }
 

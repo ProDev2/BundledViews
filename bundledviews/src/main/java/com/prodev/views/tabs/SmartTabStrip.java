@@ -34,7 +34,7 @@ import com.prodev.views.R;
  * Forked from Google Samples &gt; SlidingTabsBasic &gt;
  * <a href="https://developer.android.com/samples/SlidingTabsBasic/src/com.example.android.common/view/SlidingTabLayout.html">SlidingTabStrip</a>
  */
-class SmartTabStrip extends LinearLayout {
+public class SmartTabStrip extends LinearLayout {
 
     private static final int GRAVITY_BOTTOM = 0;
     private static final int GRAVITY_TOP = 1;
@@ -84,7 +84,7 @@ class SmartTabStrip extends LinearLayout {
     private SmartTabIndicationInterpolator indicationInterpolator;
     private SmartTabLayout.TabColorizer customTabColorizer;
 
-    SmartTabStrip(Context context, AttributeSet attrs) {
+    public SmartTabStrip(Context context, AttributeSet attrs) {
         super(context);
         setWillNotDraw(false);
 

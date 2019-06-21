@@ -1,20 +1,21 @@
 package com.prodev.views.test;
 
-import android.os.Handler;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.view.View;
 
-import com.ogaclejapan.smarttablayout.utils.v4.FragmentPagerItemAdapter;
-import com.ogaclejapan.smarttablayout.utils.v4.FragmentPagerItems;
 import com.prodev.views.tabs.SmartTabLayout;
 import com.prodev.views.test.fragments.TestFragment;
+import com.simplelib.fragments.FragmentPagerAdapter;
 
 public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private SmartTabLayout tabLayout;
+
     private ViewPager pager;
+    private FragmentPagerAdapter pagerAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,27 +33,38 @@ public class MainActivity extends AppCompatActivity {
         //tabLayout.setViewPager(pager);
 
         //Adapter
-        FragmentPagerItemAdapter adapter = new FragmentPagerItemAdapter(
-                getSupportFragmentManager(), FragmentPagerItems.with(this)
-                .add("Page1", TestFragment.class)
-                .add("Page2 Special", TestFragment.class)
-                .add("Page3", TestFragment.class)
-                .add("Page4", TestFragment.class)
-                .add("Page5 Special", TestFragment.class)
-                .add("Page6", TestFragment.class)
-                .add("Page7 Extra long", TestFragment.class)
-                .add("Page8", TestFragment.class)
-                .create());
-
-        pager.setAdapter(adapter);
+        pagerAdapter = new FragmentPagerAdapter(pager, getSupportFragmentManager());
+        pager.setAdapter(pagerAdapter);
 
         tabLayout.setViewPager(pager);
 
-        new Handler().postDelayed(new Runnable() {
+        //Events
+        tabLayout.setOnTabClickListener(new SmartTabLayout.OnTabClickListener() {
             @Override
-            public void run() {
-                //tabLayout.scrollToTab(5, 3);
+            public boolean onTabClicked(int position) {
+                return true;
             }
-        }, 3000);
+
+            @Override
+            public boolean onTabLongClicked(int position) {
+                if (position >= 0 && position < pagerAdapter.getCount())
+                    pagerAdapter.remove(position);
+                return true;
+            }
+        });
+
+        toolbar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String title = Integer.toString(pagerAdapter.getCount() + 1);
+                title += " Tab";
+                if (Math.random() > 0.5d) title += " space";
+
+                TestFragment fragment = new TestFragment();
+                fragment.setText(title);
+
+                pagerAdapter.add(title, fragment);
+            }
+        });
     }
 }
