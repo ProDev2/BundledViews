@@ -602,7 +602,7 @@ public class SmartTabLayout extends HorizontalScrollView {
     public float calculateTargetTabPos(final float tabPos) {
         final float tabMovement = tabPos - this.startTabPos;
 
-        final int nextTabIndex = (int) (tabMovement > 0 ? Math.ceil(tabPos) : Math.ceil(tabPos) - 1d);
+        final int nextTabIndex = (int) (tabMovement >= 0 ? Math.ceil(tabPos) : Math.ceil(tabPos) - 1d);
         final float targetTabPos = this.markedTabPos >= 0 ? this.markedTabPos : nextTabIndex;
 
         return targetTabPos;
