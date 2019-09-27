@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="AppTheme" parent="Theme.AppCompat">
+    <style name="AppTheme" parent="Theme.MaterialComponents">
 
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
@@ -13,7 +13,7 @@
 
     </style>
 
-    <style name="AppThemeLight" parent="Theme.AppCompat.Light">
+    <style name="AppThemeLight" parent="Theme.MaterialComponents.Light">
 
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
@@ -25,7 +25,7 @@
 
     </style>
 
-    <style name="AppThemeDark" parent="Theme.AppCompat">
+    <style name="AppThemeDark" parent="Theme.MaterialComponents">
 
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
@@ -35,7 +35,7 @@
 
     </style>
 
-    <style name="AppTransparent" parent="Theme.AppCompat.NoActionBar">
+    <style name="AppTransparent" parent="Theme.MaterialComponents.NoActionBar">
 
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
@@ -50,7 +50,7 @@
 
     </style>
 
-    <style name="ToolBarStyle" parent="Theme.AppCompat.Light">
+    <style name="ToolBarStyle" parent="Theme.MaterialComponents.Light">
 
         <item name="android:textColorPrimary">@color/toolbarTextColorPrimary</item>
         <item name="android:textColorSecondary">@color/toolbarTextColorSecondary</item>
@@ -61,7 +61,7 @@
 
     </style>
 
-    <style name="NavigationViewTheme" parent="Theme.AppCompat.Light">
+    <style name="NavigationViewTheme" parent="Theme.MaterialComponents.Light">
 
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -69,7 +69,7 @@
 
     </style>
 
-    <style name="DialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+    <style name="DialogStyle" parent="Theme.MaterialComponents.Light.Dialog.Alert">
 
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
