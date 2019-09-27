@@ -17,5 +17,10 @@ allprojects {
 
 Add the dependency:
 ```
-implementation 'com.github.ProDev2:BundledViews:1.6'
+implementation 'com.github.ProDev2:BundledViews:1.7'
+```
+
+Alternatively add the last version without AndroidX instead:
+```
+implementation 'com.github.ProDev2:BundledViews:1.7'
 ```
