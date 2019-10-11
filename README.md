@@ -15,7 +15,7 @@ allprojects {
 }
 ```
 
-Add the dependency:
+Add the dependency (**'AndroidX'**):
 ```
 implementation 'com.github.ProDev2:BundledViews:1.8'
 ```
