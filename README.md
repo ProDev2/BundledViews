@@ -1,5 +1,5 @@
 # BundledViews
-This library contains a bunch of different libraries that have been rewritten because they were inefficient and hard to use.
+This library contains a bunch of different libraries that have been rewritten because they were inefficient or hard to use.
 
 ## Featuring
 [SmartTabLayout library](https://github.com/ogaclejapan/SmartTabLayout)
