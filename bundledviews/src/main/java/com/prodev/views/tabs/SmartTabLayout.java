@@ -71,7 +71,7 @@ import java.util.Iterator;
  * Forked from Google Samples &gt; SlidingTabsBasic &gt;
  * <a href="https://developer.android.com/samples/SlidingTabsBasic/src/com.example.android.common/view/SlidingTabLayout.html">SlidingTabLayout</a>
  */
-public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObserver.OnGlobalLayoutListener {
+public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObserver.OnPreDrawListener {
     private static final boolean DEFAULT_DISTRIBUTE_EVENLY = false;
     private static final int TAB_VIEW_PADDING_DIPS = 16;
     private static final boolean TAB_VIEW_TEXT_ALL_CAPS = true;
@@ -79,6 +79,8 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     private static final int TAB_VIEW_TEXT_COLOR = 0xFC000000;
     private static final int TAB_VIEW_TEXT_MIN_WIDTH = 0;
     private static final boolean TAB_CLICKABLE = true;
+
+    private boolean appliedOnce;
 
     private int lastTabAmount;
     private int lastWidth, lastHeight;
@@ -108,6 +110,8 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     private float markedTabPos = -1;
     private float targetTabPos = -1;
     private int scrollPos = -1;
+
+    private boolean scrollNeeded;
 
     public SmartTabLayout(Context context) {
         this(context, null);
@@ -202,12 +206,13 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             return;
 
         try {
-            observer.removeOnGlobalLayoutListener(this);
+            observer.removeOnPreDrawListener(this);
         } catch (Exception e) {
         }
 
         try {
-            observer.addOnGlobalLayoutListener(this);
+            observer.addOnPreDrawListener(this);
+            onPreDraw();
         } catch (Exception e) {
         }
     }
@@ -224,6 +229,12 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
+        if (!appliedOnce) {
+            appliedOnce = true;
+
+            updateScrollLayout(false);
+        }
     }
 
     @Override
@@ -232,11 +243,11 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     }
 
     @Override
-    public void onGlobalLayout() {
-        updateScrollLayout(false);
+    public boolean onPreDraw() {
+        return !updateScrollLayout(false);
     }
 
-    public void updateScrollLayout(boolean changed) {
+    public boolean updateScrollLayout(boolean changed) {
         int tabAmount = tabStrip != null ? tabStrip.getChildCount() : 0;
 
         int width = getWidth();
@@ -246,7 +257,7 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
         if (height <= 0) height = getMeasuredHeight();
 
         if (width <= 0 || height <= 0)
-            return;
+            return false;
 
         if (changed ||
                 tabAmount != lastTabAmount ||
@@ -263,7 +274,10 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             lastInsetsEnd = insetsEnd;
 
             updateScrollLayout(width);
+            return true;
         }
+
+        return false;
     }
 
     private void updateScrollLayout(int width) {
@@ -285,6 +299,15 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             } else {
                 ViewCompat.setPaddingRelative(this, this.insetsStart, getPaddingTop(), this.insetsEnd, getPaddingBottom());
                 setClipToPadding(false);
+            }
+        } catch (Exception e) {
+        }
+
+        try {
+            if (scrollNeeded) {
+                scrollNeeded = false;
+
+                scrollToCurrentTab();
             }
         } catch (Exception e) {
         }
@@ -464,8 +487,13 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
 
         if (this.viewPager != null && this.viewPager.getAdapter() != null) {
             updateTabStrip();
-            scrollToCurrentTab();
+            scrollNeeded();
         }
+    }
+
+    public void scrollNeeded() {
+        this.scrollNeeded = true;
+        requestLayout();
     }
 
     /**
