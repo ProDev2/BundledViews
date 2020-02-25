@@ -8,14 +8,14 @@ import android.view.View;
 
 import com.prodev.views.tabs.SmartTabLayout;
 import com.prodev.views.test.fragments.TestFragment;
-import com.simplelib.fragments.FragmentPagerAdapter;
+import com.simplelib.pager.SimpleFragmentPagerAdapter;
 
 public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private SmartTabLayout tabLayout;
 
     private ViewPager pager;
-    private FragmentPagerAdapter pagerAdapter;
+    private SimpleFragmentPagerAdapter pagerAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
         //tabLayout.setViewPager(pager);
 
         //Adapter
-        pagerAdapter = new FragmentPagerAdapter(pager, getSupportFragmentManager());
+        pagerAdapter = new SimpleFragmentPagerAdapter(getSupportFragmentManager());
         pager.setAdapter(pagerAdapter);
 
         tabLayout.setViewPager(pager);
@@ -49,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTabLongClicked(int position) {
                 if (position >= 0 && position < pagerAdapter.getCount())
                     pagerAdapter.remove(position);
+
+                tabLayout.updateTabStrip();
+                tabLayout.scrollToCurrentTab();
                 return true;
             }
         });
@@ -63,7 +66,10 @@ public class MainActivity extends AppCompatActivity {
                 TestFragment fragment = new TestFragment();
                 fragment.setText(title);
 
-                pagerAdapter.add(title, fragment);
+                pagerAdapter.add(fragment, title);
+
+                tabLayout.updateTabStrip();
+                tabLayout.scrollToCurrentTab();
             }
         });
     }

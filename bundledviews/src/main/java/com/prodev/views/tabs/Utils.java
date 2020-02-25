@@ -16,13 +16,13 @@
  */
 package com.prodev.views.tabs;
 
-import androidx.core.view.MarginLayoutParamsCompat;
-import androidx.core.view.ViewCompat;
 import android.view.View;
 import android.view.ViewGroup;
 
-final class Utils {
+import androidx.core.view.MarginLayoutParamsCompat;
+import androidx.core.view.ViewCompat;
 
+final class Utils {
     private Utils() {
     }
 
@@ -68,6 +68,28 @@ final class Utils {
         }
     }
 
+    static int getLeft(View v) {
+        return getLeft(v, false);
+    }
+
+    static int getLeft(View v, boolean withoutPadding) {
+        if (v == null) {
+            return 0;
+        }
+        return (withoutPadding) ? v.getLeft() + getPaddingStart(v) : v.getLeft();
+    }
+
+    static int getRight(View v) {
+        return getRight(v, false);
+    }
+
+    static int getRight(View v, boolean withoutPadding) {
+        if (v == null) {
+            return 0;
+        }
+        return (withoutPadding) ? v.getRight() - getPaddingEnd(v) : v.getRight();
+    }
+
     static int getPaddingStart(View v) {
         if (v == null) {
             return 0;
@@ -105,16 +127,32 @@ final class Utils {
         return MarginLayoutParamsCompat.getMarginEnd(lp);
     }
 
+    static int getMarginLeft(View v) {
+        if (v == null) {
+            return 0;
+        }
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        return lp.leftMargin;
+    }
+
+    static int getMarginRight(View v) {
+        if (v == null) {
+            return 0;
+        }
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        return lp.rightMargin;
+    }
+
     static int getMarginHorizontally(View v) {
         if (v == null) {
             return 0;
         }
         ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
-        return MarginLayoutParamsCompat.getMarginStart(lp) + MarginLayoutParamsCompat.getMarginEnd(lp);
+        return MarginLayoutParamsCompat.getMarginStart(lp) +
+                MarginLayoutParamsCompat.getMarginEnd(lp);
     }
 
     static boolean isLayoutRtl(View v) {
         return ViewCompat.getLayoutDirection(v) == ViewCompat.LAYOUT_DIRECTION_RTL;
     }
-
 }
