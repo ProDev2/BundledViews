@@ -76,7 +76,7 @@ final class Utils {
         if (v == null) {
             return 0;
         }
-        return (withoutPadding) ? v.getLeft() + getPaddingStart(v) : v.getLeft();
+        return (withoutPadding) ? v.getLeft() + getPaddingLeft(v) : v.getLeft();
     }
 
     static int getRight(View v) {
@@ -87,7 +87,21 @@ final class Utils {
         if (v == null) {
             return 0;
         }
-        return (withoutPadding) ? v.getRight() - getPaddingEnd(v) : v.getRight();
+        return (withoutPadding) ? v.getRight() - getPaddingRight(v) : v.getRight();
+    }
+
+    static int getPaddingLeft(View v) {
+        if (v == null) {
+            return 0;
+        }
+        return v.getPaddingLeft();
+    }
+
+    static int getPaddingRight(View v) {
+        if (v == null) {
+            return 0;
+        }
+        return v.getPaddingRight();
     }
 
     static int getPaddingStart(View v) {

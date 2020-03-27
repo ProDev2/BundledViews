@@ -729,6 +729,14 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
 
         int targetScrollPos = 0;
         if (tabStrip.isIndicatorAlwaysInCenter()) {
+            int width = Utils.getWidth(this);
+            if (width <= 0) width = Utils.getMeasuredWidth(this);
+
+            int scrollOffset = (width / 2) - Utils.getPaddingLeft(this);
+
+            targetScrollPos = Utils.getLeft(targetTab) + (Utils.getWidth(targetTab) / 2) - scrollOffset;
+
+            /*
             targetScrollPos = Utils.getLeft(targetTab) - Utils.getMarginLeft(targetTab);
 
             View firstTab;
@@ -745,6 +753,7 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
                 int target = Utils.getWidth(targetTab) + Utils.getMarginRight(targetTab);
                 targetScrollPos += (target - first) / 2;
             }
+            */
         } else {
             if (!isLayoutRtl) {
                 targetScrollPos = Utils.getLeft(targetTab) - Utils.getMarginLeft(targetTab);
