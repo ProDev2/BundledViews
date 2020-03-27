@@ -86,6 +86,8 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     private int lastWidth, lastHeight;
     private int lastInsetsStart, lastInsetsEnd;
 
+    private boolean layoutUpdateNeeded;
+
     protected final SmartTabStrip tabStrip;
     private int tabViewBackgroundResId;
     private boolean tabViewTextAllCaps;
@@ -260,11 +262,14 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             return false;
 
         if (changed ||
+                layoutUpdateNeeded ||
                 tabAmount != lastTabAmount ||
                 width != lastWidth ||
                 height != lastHeight ||
                 insetsStart != lastInsetsStart ||
                 insetsEnd != lastInsetsEnd) {
+            layoutUpdateNeeded = false;
+
             lastTabAmount = tabAmount;
 
             lastWidth = width;
@@ -495,6 +500,11 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             updateTabStrip();
             scrollNeeded();
         }
+    }
+
+    public void layoutUpdateNeeded() {
+        this.layoutUpdateNeeded = true;
+        requestLayout();
     }
 
     public void scrollNeeded() {
