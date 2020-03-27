@@ -51,14 +51,14 @@ public class MainActivity extends AppCompatActivity {
                     pagerAdapter.remove(position);
 
                 tabLayout.updateTabStrip();
-                tabLayout.scrollToCurrentTab();
+                tabLayout.scrollNeeded();
                 return true;
             }
         });
 
-        toolbar.setOnClickListener(new View.OnClickListener() {
+        final Runnable createTap = new Runnable() {
             @Override
-            public void onClick(View v) {
+            public void run() {
                 String title = Integer.toString(pagerAdapter.getCount() + 1);
                 title += " Tab";
                 if (Math.random() > 0.5d) title += " space";
@@ -68,8 +68,19 @@ public class MainActivity extends AppCompatActivity {
 
                 pagerAdapter.add(fragment, title);
 
+                pager.setCurrentItem(pagerAdapter.getPageCount() - 1, false);
+
                 tabLayout.updateTabStrip();
-                tabLayout.scrollToCurrentTab();
+                tabLayout.scrollNeeded();
+            }
+        };
+        createTap.run();
+        createTap.run();
+
+        toolbar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createTap.run();
             }
         });
     }

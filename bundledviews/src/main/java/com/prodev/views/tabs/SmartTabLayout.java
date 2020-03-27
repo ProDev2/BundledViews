@@ -111,7 +111,7 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     private float targetTabPos = -1;
     private int scrollPos = -1;
 
-    private boolean scrollNeeded;
+    private Float scrollNeededToTapPos;
 
     public SmartTabLayout(Context context) {
         this(context, null);
@@ -277,6 +277,21 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             return true;
         }
 
+        try {
+            if (scrollNeededToTapPos != null) {
+                try {
+                    if (scrollNeededToTapPos < 0f) {
+                        scrollToCurrentTab();
+                    } else {
+                        scrollToTab(scrollNeededToTapPos);
+                    }
+                } finally {
+                    scrollNeededToTapPos = null;
+                }
+            }
+        } catch (Exception e) {
+        }
+
         return false;
     }
 
@@ -299,15 +314,6 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
             } else {
                 ViewCompat.setPaddingRelative(this, this.insetsStart, getPaddingTop(), this.insetsEnd, getPaddingBottom());
                 setClipToPadding(false);
-            }
-        } catch (Exception e) {
-        }
-
-        try {
-            if (scrollNeeded) {
-                scrollNeeded = false;
-
-                scrollToCurrentTab();
             }
         } catch (Exception e) {
         }
@@ -492,7 +498,12 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
     }
 
     public void scrollNeeded() {
-        this.scrollNeeded = true;
+        this.scrollNeededToTapPos = -1f;
+        requestLayout();
+    }
+
+    public void scrollNeeded(float tapPos) {
+        this.scrollNeededToTapPos = tapPos;
         requestLayout();
     }
 
