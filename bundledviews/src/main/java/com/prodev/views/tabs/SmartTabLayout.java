@@ -202,6 +202,16 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
         reattachLayoutListener();
     }
 
+    protected final SmartTabStrip getTabStrip() {
+        return tabStrip;
+    }
+
+    public void setGravity(int gravity) {
+        gravity &= Gravity.VERTICAL_GRAVITY_MASK;
+
+        tabStrip.setGravity(gravity);
+    }
+
     public void reattachLayoutListener() {
         ViewTreeObserver observer = getViewTreeObserver();
         if (observer == null || !observer.isAlive())
@@ -1048,7 +1058,7 @@ public class SmartTabLayout extends HorizontalScrollView implements ViewTreeObse
 
             textView.setLayoutParams(new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT
+                    LinearLayout.LayoutParams.WRAP_CONTENT
             ));
 
             if (tabViewBackgroundResId != NO_ID) {

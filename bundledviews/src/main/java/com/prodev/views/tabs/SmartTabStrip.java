@@ -24,6 +24,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 
@@ -56,6 +57,7 @@ public class SmartTabStrip extends LinearLayout {
     private static final boolean DEFAULT_INDICATOR_IN_FRONT = false;
     private static final boolean DEFAULT_INDICATOR_WITHOUT_PADDING = false;
     private static final int DEFAULT_INDICATOR_GRAVITY = GRAVITY_BOTTOM;
+    private static final int DEFAULT_LAYOUT_GRAVITY = GRAVITY_CENTER;
     private static final boolean DEFAULT_DRAW_DECORATION_AFTER_TAB = false;
 
     private final int topBorderThickness;
@@ -75,6 +77,7 @@ public class SmartTabStrip extends LinearLayout {
     private final int dividerThickness;
     private final Paint dividerPaint;
     private final float dividerHeight;
+    private final int layoutGravity;
     private final SimpleTabColorizer defaultTabColorizer;
     private final boolean drawDecorationAfterTab;
 
@@ -111,6 +114,7 @@ public class SmartTabStrip extends LinearLayout {
         int dividerColor = setColorAlpha(themeForegroundColor, DEFAULT_DIVIDER_COLOR_ALPHA);
         int dividerColorsId = NO_ID;
         int dividerThickness = (int) (DEFAULT_DIVIDER_THICKNESS_DIPS * density);
+        int layoutGravity = DEFAULT_LAYOUT_GRAVITY;
         boolean drawDecorationAfterTab = DEFAULT_DRAW_DECORATION_AFTER_TAB;
 
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.stl_SmartTabLayout);
@@ -148,6 +152,8 @@ public class SmartTabStrip extends LinearLayout {
                 R.styleable.stl_SmartTabLayout_stl_dividerColors, dividerColorsId);
         dividerThickness = a.getDimensionPixelSize(
                 R.styleable.stl_SmartTabLayout_stl_dividerThickness, dividerThickness);
+        layoutGravity = a.getInt(
+                R.styleable.stl_SmartTabLayout_stl_layoutGravity, layoutGravity);
         drawDecorationAfterTab = a.getBoolean(
                 R.styleable.stl_SmartTabLayout_stl_drawDecorationAfterTab, drawDecorationAfterTab);
         a.recycle();
@@ -184,9 +190,31 @@ public class SmartTabStrip extends LinearLayout {
         this.dividerPaint.setStrokeWidth(dividerThickness);
         this.dividerThickness = dividerThickness;
 
+        this.layoutGravity = layoutGravity;
+
         this.drawDecorationAfterTab = drawDecorationAfterTab;
 
         this.indicationInterpolator = SmartTabIndicationInterpolator.of(indicationInterpolatorId);
+
+        // Set values
+        try {
+            switch (layoutGravity) {
+                case GRAVITY_TOP:
+                    setGravity(Gravity.TOP);
+                    break;
+
+                default:
+                case GRAVITY_CENTER:
+                    setGravity(Gravity.CENTER_VERTICAL);
+                    break;
+
+                case GRAVITY_BOTTOM:
+                    setGravity(Gravity.BOTTOM);
+                    break;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**

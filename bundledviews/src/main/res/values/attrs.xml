@@ -36,6 +36,11 @@
         <attr name="stl_customTabTextLayoutId" format="reference" />
         <attr name="stl_customTabTextViewId" format="reference" />
         <attr name="stl_distributeEvenly" format="boolean" />
+        <attr name="stl_layoutGravity" format="enum">
+            <enum name="bottom" value="0" />
+            <enum name="top" value="1" />
+            <enum name="center" value="2" />
+        </attr>
         <attr name="stl_clickable" format="boolean" />
         <attr name="stl_drawDecorationAfterTab" format="boolean" />
     </declare-styleable>
